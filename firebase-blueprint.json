@@ -1,0 +1,329 @@
+{
+  "entities": {
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Non-PII store owner or customer profile associated with a Google Sign-In UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching the document path.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name from Google account.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Optional avatar image URL.",
+          "maxLength": 1024
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Preferred store receipt title.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "storeName", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII subcollection document holding the user's verified email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching parent userId.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email address.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "CustomProduct": {
+      "title": "CustomProduct",
+      "description": "User-customized or newly added Aqua Nest product card synced to Firestore.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "scientificName": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "careNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "price": {
+          "type": "number"
+        },
+        "originalPrice": {
+          "type": "number"
+        },
+        "stock": {
+          "type": "number"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "department": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "placement": {
+          "type": "string",
+          "enum": ["", "Foreground", "Midground", "Background", "Floating"],
+          "maxLength": 32
+        },
+        "brand": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "image": {
+          "type": "string",
+          "maxLength": 250000
+        },
+        "option1Label": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "option1Delta": {
+          "type": "number"
+        },
+        "option2Label": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "option2Delta": {
+          "type": "number"
+        },
+        "option3Label": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "option3Delta": {
+          "type": "number"
+        },
+        "isDeleted": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "price",
+        "stock",
+        "sku",
+        "department",
+        "category",
+        "isDeleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CloudOrder": {
+      "title": "CloudOrder",
+      "description": "Completed Aqua Nest storefront/POS order record synced for the signed-in Google user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "orderNote": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "itemSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "itemCount": {
+          "type": "number"
+        },
+        "subtotal": {
+          "type": "number"
+        },
+        "discountLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "discountAmount": {
+          "type": "number"
+        },
+        "taxRate": {
+          "type": "number"
+        },
+        "taxAmount": {
+          "type": "number"
+        },
+        "deliveryFee": {
+          "type": "number"
+        },
+        "deliveryMode": {
+          "type": "string",
+          "enum": ["ncm", "pickup"],
+          "maxLength": 16
+        },
+        "deliveryPartner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "deliveryDestination": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "trackingCode": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "total": {
+          "type": "number"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "paymentDetails": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Paid", "Refunded"],
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "customerName",
+        "itemSummary",
+        "itemCount",
+        "subtotal",
+        "discountLabel",
+        "discountAmount",
+        "taxRate",
+        "taxAmount",
+        "deliveryFee",
+        "deliveryMode",
+        "deliveryPartner",
+        "total",
+        "paymentMethod",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserPublicProfile",
+      "description": "Public/non-PII profile document for an authenticated Google user."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": "UserPrivateInfo",
+      "description": "Isolated PII document (docId == 'info') storing verified email."
+    },
+    "/users/{userId}/customProducts/{productId}": {
+      "schema": "CustomProduct",
+      "description": "Customized or newly created Aqua Nest product cards owned by userId."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": "CloudOrder",
+      "description": "Completed store orders owned by userId."
+    }
+  }
+}

@@ -1,0 +1,265 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function userExistsAfter(userId) {
+      return existsAfter(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // --- Validation Blueprints (Anti-Update-Gap) ---
+    function isValidUserPublicProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'storeName', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'storeName', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid == userId && data.uid == request.auth.uid && isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+        data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 120 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid == userId && data.uid == request.auth.uid && isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.email == request.auth.token.email &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCustomProduct(data, userId, productId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'name', 'price', 'stock', 'sku',
+          'department', 'category', 'isDeleted', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'scientificName', 'careNote',
+          'price', 'originalPrice', 'stock', 'sku', 'department',
+          'category', 'placement', 'brand', 'image',
+          'option1Label', 'option1Delta', 'option2Label', 'option2Delta',
+          'option3Label', 'option3Delta', 'isDeleted', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == productId && isValidId(data.id) &&
+        data.ownerId is string && data.ownerId == userId && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 140 &&
+        (!('scientificName' in data) || (data.scientificName is string && data.scientificName.size() <= 140)) &&
+        (!('careNote' in data) || (data.careNote is string && data.careNote.size() <= 500)) &&
+        data.price is number && data.price >= 0 && data.price <= 10000000 &&
+        (!('originalPrice' in data) || (data.originalPrice is number && data.originalPrice >= 0 && data.originalPrice <= 10000000)) &&
+        data.stock is number && data.stock >= 0 && data.stock <= 1000000 &&
+        data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 64 &&
+        data.department is string && data.department.size() >= 1 && data.department.size() <= 80 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+        (!('placement' in data) || (
+          data.placement is string &&
+          data.placement.size() <= 32 &&
+          data.placement in ['', 'Foreground', 'Midground', 'Background', 'Floating']
+        )) &&
+        (!('brand' in data) || (data.brand is string && data.brand.size() <= 80)) &&
+        (!('image' in data) || (data.image is string && data.image.size() <= 250000)) &&
+        (!('option1Label' in data) || (data.option1Label is string && data.option1Label.size() <= 80)) &&
+        (!('option1Delta' in data) || (data.option1Delta is number && data.option1Delta >= -1000000 && data.option1Delta <= 1000000)) &&
+        (!('option2Label' in data) || (data.option2Label is string && data.option2Label.size() <= 80)) &&
+        (!('option2Delta' in data) || (data.option2Delta is number && data.option2Delta >= -1000000 && data.option2Delta <= 1000000)) &&
+        (!('option3Label' in data) || (data.option3Label is string && data.option3Label.size() <= 80)) &&
+        (!('option3Delta' in data) || (data.option3Delta is number && data.option3Delta >= -1000000 && data.option3Delta <= 1000000)) &&
+        data.isDeleted is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCloudOrder(data, userId, orderId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'customerName', 'itemSummary', 'itemCount',
+          'subtotal', 'discountLabel', 'discountAmount', 'taxRate', 'taxAmount',
+          'deliveryFee', 'deliveryMode', 'deliveryPartner', 'total',
+          'paymentMethod', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'customerName', 'orderNote', 'itemSummary', 'itemCount',
+          'subtotal', 'discountLabel', 'discountAmount', 'taxRate', 'taxAmount',
+          'deliveryFee', 'deliveryMode', 'deliveryPartner', 'deliveryDestination',
+          'trackingCode', 'total', 'paymentMethod', 'paymentDetails',
+          'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id == orderId && isValidId(data.id) &&
+        data.ownerId is string && data.ownerId == userId && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120 &&
+        (!('orderNote' in data) || (data.orderNote is string && data.orderNote.size() <= 400)) &&
+        data.itemSummary is string && data.itemSummary.size() >= 1 && data.itemSummary.size() <= 600 &&
+        data.itemCount is number && data.itemCount >= 1 && data.itemCount <= 10000 &&
+        data.subtotal is number && data.subtotal >= 0 && data.subtotal <= 100000000 &&
+        data.discountLabel is string && data.discountLabel.size() >= 1 && data.discountLabel.size() <= 40 &&
+        data.discountAmount is number && data.discountAmount >= 0 && data.discountAmount <= 100000000 &&
+        data.taxRate is number && data.taxRate >= 0 && data.taxRate <= 100 &&
+        data.taxAmount is number && data.taxAmount >= 0 && data.taxAmount <= 100000000 &&
+        data.deliveryFee is number && data.deliveryFee >= 0 && data.deliveryFee <= 100000 &&
+        data.deliveryMode is string && data.deliveryMode.size() <= 16 && data.deliveryMode in ['ncm', 'pickup'] &&
+        data.deliveryPartner is string && data.deliveryPartner.size() >= 1 && data.deliveryPartner.size() <= 80 &&
+        (!('deliveryDestination' in data) || (data.deliveryDestination is string && data.deliveryDestination.size() <= 80)) &&
+        (!('trackingCode' in data) || (data.trackingCode is string && data.trackingCode.size() <= 40)) &&
+        data.total is number && data.total >= 0 && data.total <= 100000000 &&
+        data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 80 &&
+        (!('paymentDetails' in data) || (data.paymentDetails is string && data.paymentDetails.size() <= 240)) &&
+        data.status is string && data.status.size() <= 16 && data.status in ['Paid', 'Refunded'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 1. Non-PII User Public Profile
+    match /users/{userId} {
+      allow get: if isVerifiedOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserPublicProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserPublicProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action: Update profile display fields or store receipt title
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'storeName', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // 2. Isolated PII Subcollection (/users/{userId}/private/info)
+      match /private/{docId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && docId == 'info' && userExists(userId);
+        allow list: if false;
+
+        allow create: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          docId == 'info' &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExistsAfter(userId);
+
+        allow update: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          docId == 'info' &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt'])
+          ) &&
+          userExists(userId);
+
+        allow delete: if false;
+      }
+
+      // 3. Customized & Newly Added Product Cards (/users/{userId}/customProducts/{productId})
+      match /customProducts/{productId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(productId) && userExists(userId);
+        allow list: if isVerifiedOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(productId) &&
+          isValidCustomProduct(incoming(), userId, productId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(productId) &&
+          isValidCustomProduct(incoming(), userId, productId) &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            // Action: Customize card details, image, price, stock, or options
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'scientificName', 'careNote', 'price', 'originalPrice',
+              'stock', 'sku', 'department', 'category', 'placement', 'brand',
+              'image', 'option1Label', 'option1Delta', 'option2Label', 'option2Delta',
+              'option3Label', 'option3Delta', 'isDeleted', 'updatedAt'
+            ])
+          ) &&
+          userExists(userId);
+
+        allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(productId) && userExists(userId);
+      }
+
+      // 4. Completed Store Orders (/users/{userId}/orders/{orderId})
+      match /orders/{orderId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(orderId) && userExists(userId);
+        allow list: if isVerifiedOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(orderId) &&
+          isValidCloudOrder(incoming(), userId, orderId) &&
+          incoming().status == 'Paid' &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isVerifiedOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(orderId) &&
+          isValidCloudOrder(incoming(), userId, orderId) &&
+          existing().status != 'Refunded' &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            // Action: Mark order as Refunded (terminal state)
+            incoming().status == 'Refunded' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          ) &&
+          userExists(userId);
+
+        allow delete: if false;
+      }
+    }
+  }
+}
